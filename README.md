@@ -1,8 +1,11 @@
 Static site generator for each fragment shader in shaders
 
 `cargo run` to generate
-`http-server site` to run locally
+`http-server site` to run locally (requires npom and `npm install -g http-server`)
 
+## Todo
+add src listing
+and URL in title so mouse clicc is preserved for 
 
 ## Shader ideas
 * better water
