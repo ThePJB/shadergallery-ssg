@@ -1,11 +1,11 @@
 #version 300 es
+precision mediump float;
 
 #define M_PI 3.1415926535897932384626433832795
 
-precision mediump float;
 
 uniform float time;
-uniform float aspect;
+uniform vec2 dimensions;
 uniform sampler2D prev;
 uniform vec2 resolution;
 
@@ -264,19 +264,6 @@ void main() {
   if (dPlanet(uv_screen, time*0.1, 0.35, 0.05) <= 0.0) {
 
   // if (dSystem(uv_screen, time) <= 0.0) {
-    frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
-  }
-
-  if (dPlanet(uv_screen, time*0.2, 0.85, 0.03) <= 0.0) {
-    frag_colour = vec4(1.0, 0.0, 0.0, 1.0);
-  }
-  if (dPlanet(uv_screen, M_PI/3.0 + time*0.2, 0.85, 0.03) <= 0.0) {
-    frag_colour = vec4(0.0, 1.0, 0.0, 1.0);
-  }
-  if (dPlanet(uv_screen, M_PI*2.0/3.0 + time*0.2, 0.85, 0.03) <= 0.0) {
-    frag_colour = vec4(0.0, 0.0, 1.0, 1.0);
-  }
-  if (dBox(uv_screen, time) <= 0.0) {
     frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
   }
 

@@ -3,6 +3,8 @@
     let canvas;
     let timeUniformLocation;
     let resolutionUniformLocation;
+    let mouseUniformLocation;
+    let joyUniformLocation;
   
     let fbTexture = new Array(2);
     let fb = new Array(2);
@@ -10,6 +12,8 @@
     let texUnitUf = new Array(2);
     let textureUniformLocation;
     let curr_fb = 0;
+
+    let lmb = false;
   
     let pgm;
   
@@ -27,6 +31,23 @@
       texUnitUf = [0, 1];
   
       window.addEventListener("resize", resizeCanvas);
+      canvas.addEventListener("mousemove", mouseMove);
+      window.addEventListener("mousedown", function(event) {
+        if (event.button === 0) {
+            lmb = true;
+        }
+      });
+    
+    window.addEventListener("mouseup", function(event) {
+        if (event.button === 0) {
+            lmb = false;
+        }
+      });
+    window.addEventListener("mouseleave", function(event) {
+        if (event.button === 0) {
+            lmb = false;
+        }
+      });
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(1.0, 0.0, 0.0, 1.0);
       gl.disable(gl.BLEND);
@@ -45,6 +66,8 @@
       timeUniformLocation = gl.getUniformLocation(pgm, 'time');
       textureUniformLocation = gl.getUniformLocation(pgm, 'prev');
       resolutionUniformLocation = gl.getUniformLocation(pgm, 'resolution');
+      mouseUniformLocation = gl.getUniformLocation(pgm, 'mouse');
+      joyUniformLocation = gl.getUniformLocation(pgm, 'joy');
   
   
       const positionBuffer = gl.createBuffer();
@@ -97,6 +120,16 @@
   
       requestAnimationFrame(render);
     }
+
+    function mouseMove(event) {
+      if (!lmb) {
+        return;
+      }
+      var rect = canvas.getBoundingClientRect();
+      var x = (event.clientX - rect.left) / canvas.width;
+      var y = (event.clientY - rect.top) / canvas.height;
+      gl.uniform2f(mouseUniformLocation, x, y);
+    }
   
     function resizeCanvas() {
       const canvas = document.getElementById("canvas-###name###");
@@ -109,6 +142,8 @@
       gl.bindTexture(gl.TEXTURE_2D, fbTexture[0]);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   
       // set up framebuffer
@@ -124,6 +159,8 @@
       gl.bindTexture(gl.TEXTURE_2D, fbTexture[1]);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   
       // set up framebuffer
