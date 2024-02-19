@@ -219,6 +219,8 @@ void main() {
     vec4 maxneigh = max(texture(prev, uv-dx*r), max(texture(prev, uv+dx*r), max(texture(prev, uv-dy*r), texture(prev, uv+dy*r))));
     vec4 me = texture(prev, uv);
 
-    frag_colour = 0.98 * max(maxneigh, me);
+    vec4 final_colour = 0.98 * max(maxneigh, me);
+    final_colour.w = 1.0;
+    frag_colour = final_colour;
   }
 }

@@ -241,6 +241,7 @@ void main() {
       v *= 2.0;
 
       vec4 samp = texture(prev, uv - v) * 0.99;
+      samp.w = 1.0;
 
       // v -= dy;
     frag_colour = samp;

@@ -3,9 +3,8 @@
 precision mediump float;
 
 uniform float time;
-uniform vec2 dimensions;
-uniform sampler2D prev;
 uniform vec2 resolution;
+uniform sampler2D prev;
 
 in vec2 uv;
 out vec4 frag_colour;
@@ -179,7 +178,7 @@ float sdSegment( in vec2 p, in vec2 a, in vec2 b )
 void main() {
   vec2 uv_screen = (2.0 * (uv - vec2(0.5, 0.5))) / resolution.yy * resolution;
 
-  float t = time * 0.2;
+  float t = time * 0.25;
   float x1 = snoise(vec2(t, 0.0));
   float y1 = snoise(vec2(t, 4.0));
   float x2 = snoise(vec2(t, 8.0));
@@ -190,8 +189,8 @@ void main() {
 
   float d = sdSegment(uv_screen, p1, p2);
 
-  float du = cnoise(vec3(8.0 * uv_screen, 0.1*time));
-  float dv = cnoise(vec3(8.0 * uv_screen, 0.1*time + 69.0));
+  float du = cnoise(vec3(2.5 * uv_screen, 0.1*time));
+  float dv = cnoise(vec3(2.5 * uv_screen, 0.1*time + 69.0));
   vec2 uvp = uv;
   float wmag = max(d * 0.01, 0.01);
   // wmag = 0.0;
@@ -201,21 +200,22 @@ void main() {
   uvp.y += wmag*dv;
   uvp.y -= 0.0025;
 
+  // clamp(uvp, 0.0, 1.0);
+
+  // frag_colour = vec4(1.0 - texture(prev, uv).xyz, 1.0); // if it was working this would make me have a seizure
   vec3 prev = texture(prev, uvp).xyz;
 
-  if (uvp.x < 0.0 || uvp.x > 1.0 || uvp.y < 0.0 || uvp.y > 1.0) {
-    prev = vec3(0.0, 0.0, 0.0);
-  }
-
   // frag_colour = vec4(texture(prev, uv).xyz * 0.9, 1.0);
-  prev -= 0.003;
+  prev -= 0.002;
+  prev.yz -= 0.001;
   prev = max(prev, vec3(0.0, 0.0, 0.0));
 
 
 
-  float dmin = 0.03;
+  float dmin = 0.04;
   if (d < dmin) {
-    vec3 base = vec3(1.0, 0.7, 0.2);
+    // vec3 base = vec3(0.2, 0.5, 0.8);
+    vec3 base = vec3(0.8, 0.5, 0.2);
     // vec3 base = hsv2rgb(vec3(time * 0.1, 0.8, 1)); // rainbow vomit mode
     // float o = (1.0 - d);
     // float oo = o*o;

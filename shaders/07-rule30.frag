@@ -232,40 +232,28 @@ void main() {
   dx *= 1.0;
   dy *= 1.0;
 
-  vec3 me = texture(prev, uv + dx).xyz;
-  vec4 acc = 
-    round(texture(prev, uv_rnd + dx)) +
-    round(texture(prev, uv_rnd + dy)) +
-    round(texture(prev, uv_rnd + dx + dy)) +
-    round(texture(prev, uv_rnd + dx - dy)) +
-    round(texture(prev, uv_rnd - dx - dy)) +
-    round(texture(prev, uv_rnd - dx + dy)) +
-    round(texture(prev, uv_rnd - dx)) +
-    round(texture(prev, uv_rnd - dy));
+  vec3 me = texture(prev, uv).xyz;
 
+  vec4 l = texture(prev, uv - dy - dx);
+  vec4 r = texture(prev, uv - dy + dx);
+  vec4 u = texture(prev, uv - dy);
 
-  vec4 old = texture(prev, uv_rnd);
-  frag_colour.x = acc.x == 3.0 ? 1.0 : acc.x == 2.0 ? old.x : 0.0;
-  frag_colour.y = acc.y == 3.0 ? 1.0 : acc.y == 2.0 ? old.y : 0.0;
-  frag_colour.z = acc.z == 3.0 ? 1.0 : acc.z == 2.0 ? old.z : 0.0;
-  frag_colour.w = 1.0;
-  // frag_colour.w = acc.w == 3.0 ? 1.0 : acc.w == 2.0 ? old.w : 0.0;
-
-  // frag_colour = vec4(0.0, 0.0, 0.0, 1.0);
-  // if (acc.x == 3.0) {
-  //   frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
-  // } else if (acc.x == 2.0) {
-  //   frag_colour = texture(prev, uv_rnd);
-  // }
+    if (
+        (r.x == 1.0 && u.x == 0.0 && l.x == 0.0) ||
+        (r.x == 1.0 && u.x == 1.0 && l.x == 0.0) ||
+        (r.x == 0.0 && u.x == 1.0 && l.x == 0.0) ||
+        (r.x == 0.0 && u.x == 0.0 && l.x == 1.0)
+    ) {
+        frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
+    } else {
+        frag_colour = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 
   vec2 uv_screen = (2.0 * (uv - vec2(0.5, 0.5))) / resolution.yy * resolution;
 
 
-  // if (dCircles(uv_screen, time*0.1) <= 0.0) {
-  if (dPlanet(uv_screen, time*0.1, 0.35, 0.05) <= 0.0) {
-
-  // if (dSystem(uv_screen, time) <= 0.0) {
-    frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
+  if (dPlanet(uv_screen, time*0.2, 0.35, 0.05) <= 0.0 || dPlanet(uv_screen, M_PI + time*0.2, 0.35, 0.05) <= 0.0) {
+frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
   }
 
 }

@@ -1,23 +1,80 @@
 #version 300 es
+
 precision mediump float;
 
 #define M_PI 3.1415926535897932384626433832795
 
-
 uniform float time;
-uniform vec2 dimensions;
-uniform sampler2D prev;
 uniform vec2 resolution;
 
 in vec2 uv;
 out vec4 frag_colour;
 
+float hash( uint n ) 
+{   // integer hash copied from Hugo Elias
+	n = (n<<13U)^n; 
+    n = n*(n*n*15731U+789221U)+1376312589U;
+    return float(n&uvec3(0x0fffffffU))/float(0x0fffffff);
+}
 
+vec2 random2f(vec2 p) {
+  return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
+}
+
+vec2 random2f(ivec2 p) {
+  uint x = uint(p.x);
+  uint y = uint(p.y);
+  return vec2(hash(x + y * 123123799u), hash(x + y + 123124117u));
+}
+
+float smin(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
+    return mix(a, b, h) - k*h*(1.0-h);
+}
+
+float voronoiDistance( in vec2 x )
+{
+    ivec2 p = ivec2(floor( x ));
+    vec2  f = fract( x );
+
+    ivec2 mb;
+    vec2 mr;
+
+    float res = 8.0;
+    for( int j=-1; j<=1; j++ )
+    for( int i=-1; i<=1; i++ )
+    {
+        ivec2 b = ivec2(i, j);
+        vec2  r = vec2(b) + random2f(p+b)-f;
+        float d = dot(r,r);
+
+        if( d < res )
+        {
+            res = d;
+            mr = r;
+            mb = b;
+        }
+    }
+
+    res = 8.0;
+    for( int j=-2; j<=2; j++ )
+    for( int i=-2; i<=2; i++ )
+    {
+        ivec2 b = mb + ivec2(i, j);
+        vec2  r = vec2(b) + random2f(p+b) - f;
+        float d = dot(0.5*(mr+r), normalize(r-mr));
+
+        // res = smin( res, d, 0.05 );
+        res = min( res, d );
+    }
+
+    return res;
+}
 
 //	Classic Perlin 3D Noise 
 //	by Stefan Gustavson
 //
-vec4 permutesg(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
 vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
 
@@ -33,9 +90,9 @@ float cnoise(vec3 P){
   vec4 iz0 = Pi0.zzzz;
   vec4 iz1 = Pi1.zzzz;
 
-  vec4 ixy = permutesg(permutesg(ix) + iy);
-  vec4 ixy0 = permutesg(ixy + iz0);
-  vec4 ixy1 = permutesg(ixy + iz1);
+  vec4 ixy = permute(permute(ix) + iy);
+  vec4 ixy0 = permute(ixy + iz0);
+  vec4 ixy1 = permute(ixy + iz1);
 
   vec4 gx0 = ixy0 / 7.0;
   vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5;
@@ -88,6 +145,7 @@ float cnoise(vec3 P){
   float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x); 
   return 2.2 * n_xyz;
 }
+
 
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
@@ -161,6 +219,12 @@ float snoise(vec2 v)
   return 130.0 * dot(m, g);
 }
 
+// hope is -1 to 1
+vec2 cnoise2(vec3 P) {
+  vec3 o = vec3(123.69, 1239812577.91919213, 123781254147.0);
+  return vec2(cnoise(P), cnoise(P+o));
+}
+
 vec3 hsv2rgb(vec3 c)
 {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -172,100 +236,93 @@ vec4 acolour(float t) {
   return vec4(hsv2rgb(vec3(t, 1, 1)), 1);
 }
 
-float sdSegment( in vec2 p, in vec2 a, in vec2 b )
-{
-    vec2 pa = p-a, ba = b-a;
-    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
-    return length( pa - ba*h );
+float hash1( float n ) { return fract(sin(n)*43758.5453); }
+vec2  hash2( vec2  p ) { p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) ); return fract(sin(p)*43758.5453); }
+
+float amp(float f) {
+  return sin(f*f*M_PI);
 }
 
-float dPlanet(vec2 p, float t, float orbit_radius, float planet_radius) {
-  return length(p - orbit_radius*vec2(cos(t), sin(t)))-planet_radius;
+
+float height(vec2 p, float t) {
+  float acc = 0.0;
+  for (float i=1.0; i <= 48.0; i+=1.0) {
+    // float theta = hash1(69.0 + i * 123.0);
+    float theta = M_PI*snoise(vec2(hash1(69.0 + i * 123.0), t*0.00));
+    float wind = 2.3;
+    theta = mix(wind, theta, 0.3);
+    // float theta = M_PI*cnoise(vec3(p/10.0, hash1(69.0 + i * 123.0)));
+    float up = cos(theta) * p.x - sin(theta) * p.y;
+    float vp = sin(theta) * p.x + cos(theta) * p.y;
+    float omega = 1.0 * i;
+    float k = pow(2.0, i*0.1) + 0.5;
+    // float k = 0.5*i;
+    // float A = i <= 3.0 ? i / 3.0 : 9.0/(i-3.0);
+    // float A = 0.25;
+    // float A = amp(i / 12.0);
+    // float A = min(1.0 / (4.0 - i), 1.0);
+    float A = pow(0.92, i);
+    if (i < 4.0) {
+      A = A / (4.0 - i);
+    }
+    // float phase = k*up - omega*t + 0.0;
+    float phase = k*up - omega*t + M_PI*snoise(vec2(0.2*vp, hash1(69.0 + i * 123.0))) + 2.0*M_PI*hash1(12315.0 + i * 8541.0);
+    acc += A*sin(phase);
+  }
+  // acc += 2.0*cnoise(vec3(p*0.4, t));
+  return acc;
+  // return sin(p.x);
 }
 
-float sdBox( in vec2 p, in vec2 b )
-{
-    vec2 d = abs(p)-b;
-    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+vec4 hn_fdm(vec2 p, float t) {
+  float h = height(p, t);
+  vec2 vx = vec2(0.1, 0.0);
+  vec2 vy = vec2(0.0, 0.1);
+  float hx = height(p+vx, t);
+  float hy = height(p+vy, t);
+  float dx = (hx - h);
+  float dy = (hy - h);
+  // vec3 norm = normalize(vec3(-dx, -dy, dx+dy));
+  // vec3 norm = normalize(vec3(-dx/vx.x, -dy/vy.y, 1.0));
+
+  vec3 v1 = normalize(vec3(vx.x, 0.0, dx));
+  vec3 v2 = normalize(vec3(0.0, vy.y, dy));
+  vec3 norm = cross(v1, v2);
+
+  return vec4(norm, h);
 }
 
-float dBox(vec2 p, float t) {
-  vec2 center = vec2(0.5 * sin(t), 0.5);
-  vec2 pt = p - center;
-  return sdBox(pt, vec2(0.1, 0.1));
-}
-
-float dCircles(vec2 p, float t) {
-  float r_spread = 0.25;
-  float r_circ = 0.03;
-
-  float t1 = t;
-  float t2 = t1 + (2.0*M_PI)/3.0;
-  float t3 = t2 + (2.0*M_PI)/3.0;
-
-  vec2 p1 = r_spread*vec2(cos(t1), sin(t1));
-  vec2 p2 = r_spread*vec2(cos(t2), sin(t2));
-  vec2 p3 = r_spread*vec2(cos(t3), sin(t3));
-
-  float d1 = length(p-p1) - r_circ;
-  float d2 = length(p-p2) - r_circ;
-  float d3 = length(p-p3) - r_circ;
-
-  return min(min(d1, d2), d3);
-}
-
-float dSystem(vec2 p, float t) {
-  return 
-    min(dPlanet(p, t*0.1, 0.35, 0.05),
-    min(dPlanet(p, t*0.2, 0.15, 0.03),
-    min(dPlanet(p, t*0.7, 0.85, 0.03),
-    dPlanet(p, M_PI + t*0.05, 0.55, 0.07)
-  )));
-}
 
 void main() {
-  vec2 uv_rnd = (uv*round(resolution))/resolution;
-  uv_rnd = uv;
-  vec2 dx = vec2(1.0/resolution.x, 0);
-  vec2 dy = vec2(0, 1.0/resolution.y);
+  vec2 uv_screen = ((uv - 0.5) * 2.0)/ resolution.yy * resolution;
 
-  dx *= 1.0;
-  dy *= 1.0;
+  vec4 nh = hn_fdm(uv_screen* 10.0, time * 1.0);
+  float h = nh.w;
+  vec3 norm = nh.xyz;
+  vec3 sun_dir = normalize(vec3(-0.01, 0.02, 1.0));
 
-  vec3 me = texture(prev, uv + dx).xyz;
-  vec4 acc = 
-    round(texture(prev, uv_rnd + dx)) +
-    round(texture(prev, uv_rnd + dy)) +
-    round(texture(prev, uv_rnd + dx + dy)) +
-    round(texture(prev, uv_rnd + dx - dy)) +
-    round(texture(prev, uv_rnd - dx - dy)) +
-    round(texture(prev, uv_rnd - dx + dy)) +
-    round(texture(prev, uv_rnd - dx)) +
-    round(texture(prev, uv_rnd - dy));
+  vec4 water_colour = vec4(0.2, 0.4, 0.6, 1.0);
+  vec4 foam_colour = vec4(0.7, 0.8, 1.0, 1.0);
+  vec4 sky_colour = vec4(0.2, 0.6, 0.8, 1.0);
+  vec4 specular_colour = vec4(1.0, 1.0, 1.0, 1.0);
 
+  // frag_colour = vec4(norm.xyz, 1.0);
 
-  vec4 old = texture(prev, uv_rnd);
-  frag_colour.x = acc.x == 3.0 ? 1.0 : acc.x == 2.0 ? old.x : 0.0;
-  frag_colour.y = acc.y == 3.0 ? 1.0 : acc.y == 2.0 ? old.y : 0.0;
-  frag_colour.z = acc.z == 3.0 ? 1.0 : acc.z == 2.0 ? old.z : 0.0;
-  frag_colour.w = 1.0;
-  // frag_colour.w = acc.w == 3.0 ? 1.0 : acc.w == 2.0 ? old.w : 0.0;
-
-  // frag_colour = vec4(0.0, 0.0, 0.0, 1.0);
-  // if (acc.x == 3.0) {
-  //   frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
-  // } else if (acc.x == 2.0) {
-  //   frag_colour = texture(prev, uv_rnd);
-  // }
-
-  vec2 uv_screen = (2.0 * (uv - vec2(0.5, 0.5))) / resolution.yy * resolution;
-
-
-  // if (dCircles(uv_screen, time*0.1) <= 0.0) {
-  if (dPlanet(uv_screen, time*0.1, 0.35, 0.05) <= 0.0) {
-
-  // if (dSystem(uv_screen, time) <= 0.0) {
-    frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
+  if (dot(sun_dir, norm) > 0.95) {
+    frag_colour = specular_colour;
+  } else {
+    frag_colour = mix(water_colour, sky_colour, dot(norm, normalize(vec3(0.0, 0.2, 1.0))));
   }
-
 }
+
+// for loop
+// travelling sin waves in a direction
+
+// maybe just add in 1 noise to break it up
+// smooth edges of specular
+// fresnel equn?
+// wave number etc.
+// what if the sins started at 0 so as to never make it negative
+
+// what about a orthogonal component to the wave
+// phase shift is fine, with orthogonal component

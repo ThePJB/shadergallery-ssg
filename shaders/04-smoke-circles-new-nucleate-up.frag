@@ -1,18 +1,20 @@
 #version 300 es
-precision mediump float;
 
 #define M_PI 3.1415926535897932384626433832795
 
+precision mediump float;
 
 uniform float time;
-uniform vec2 dimensions;
-uniform sampler2D prev;
 uniform vec2 resolution;
+uniform sampler2D prev;
+uniform vec2 mouse;
+
 
 in vec2 uv;
 out vec4 frag_colour;
 
-
+float hash1( float n ) { return fract(sin(n)*43758.5453); }
+vec2  hash2( vec2  p ) { p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) ); return fract(sin(p)*43758.5453); }
 
 //	Classic Perlin 3D Noise 
 //	by Stefan Gustavson
@@ -179,22 +181,6 @@ float sdSegment( in vec2 p, in vec2 a, in vec2 b )
     return length( pa - ba*h );
 }
 
-float dPlanet(vec2 p, float t, float orbit_radius, float planet_radius) {
-  return length(p - orbit_radius*vec2(cos(t), sin(t)))-planet_radius;
-}
-
-float sdBox( in vec2 p, in vec2 b )
-{
-    vec2 d = abs(p)-b;
-    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
-}
-
-float dBox(vec2 p, float t) {
-  vec2 center = vec2(0.5 * sin(t), 0.5);
-  vec2 pt = p - center;
-  return sdBox(pt, vec2(0.1, 0.1));
-}
-
 float dCircles(vec2 p, float t) {
   float r_spread = 0.25;
   float r_circ = 0.03;
@@ -203,69 +189,88 @@ float dCircles(vec2 p, float t) {
   float t2 = t1 + (2.0*M_PI)/3.0;
   float t3 = t2 + (2.0*M_PI)/3.0;
 
-  vec2 p1 = r_spread*vec2(cos(t1), sin(t1));
-  vec2 p2 = r_spread*vec2(cos(t2), sin(t2));
-  vec2 p3 = r_spread*vec2(cos(t3), sin(t3));
+  vec2 p1 = vec2(0.5 + cos(t1)*r_spread, 0.5 + sin(t1)*r_spread);
+  vec2 p2 = vec2(0.5 + cos(t2)*r_spread, 0.5 + sin(t2)*r_spread);
+  vec2 p3 = vec2(0.5 + cos(t3)*r_spread, 0.5 + sin(t3)*r_spread);
 
   float d1 = length(p-p1) - r_circ;
   float d2 = length(p-p2) - r_circ;
   float d3 = length(p-p3) - r_circ;
-
+  
   return min(min(d1, d2), d3);
 }
 
-float dSystem(vec2 p, float t) {
-  return 
-    min(dPlanet(p, t*0.1, 0.35, 0.05),
-    min(dPlanet(p, t*0.2, 0.15, 0.03),
-    min(dPlanet(p, t*0.7, 0.85, 0.03),
-    dPlanet(p, M_PI + t*0.05, 0.55, 0.07)
-  )));
+float dLine(vec2 p, float t) {
+  float x1 = snoise(vec2(t, 0.0));
+  float y1 = snoise(vec2(t, 4.0));
+  float x2 = snoise(vec2(t, 8.0));
+  float y2 = snoise(vec2(t, 12.0));
+
+  return sdSegment(p, vec2(x1, y1), vec2(x2, y2));
 }
+
+// some number of circles pop in
+// so we have a number of tries every interval, within each interval
+// float dCircles(vec2 p, float t) {
+
+// }
 
 void main() {
-  vec2 uv_rnd = (uv*round(resolution))/resolution;
-  uv_rnd = uv;
   vec2 dx = vec2(1.0/resolution.x, 0);
   vec2 dy = vec2(0, 1.0/resolution.y);
-
-  dx *= 1.0;
-  dy *= 1.0;
-
-  vec3 me = texture(prev, uv + dx).xyz;
-  vec4 acc = 
-    round(texture(prev, uv_rnd + dx)) +
-    round(texture(prev, uv_rnd + dy)) +
-    round(texture(prev, uv_rnd + dx + dy)) +
-    round(texture(prev, uv_rnd + dx - dy)) +
-    round(texture(prev, uv_rnd - dx - dy)) +
-    round(texture(prev, uv_rnd - dx + dy)) +
-    round(texture(prev, uv_rnd - dx)) +
-    round(texture(prev, uv_rnd - dy));
-
-
-  vec4 old = texture(prev, uv_rnd);
-  frag_colour.x = acc.x == 3.0 ? 1.0 : acc.x == 2.0 ? old.x : 0.0;
-  frag_colour.y = acc.y == 3.0 ? 1.0 : acc.y == 2.0 ? old.y : 0.0;
-  frag_colour.z = acc.z == 3.0 ? 1.0 : acc.z == 2.0 ? old.z : 0.0;
-  frag_colour.w = 1.0;
-  // frag_colour.w = acc.w == 3.0 ? 1.0 : acc.w == 2.0 ? old.w : 0.0;
-
-  // frag_colour = vec4(0.0, 0.0, 0.0, 1.0);
-  // if (acc.x == 3.0) {
-  //   frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
-  // } else if (acc.x == 2.0) {
-  //   frag_colour = texture(prev, uv_rnd);
-  // }
-
   vec2 uv_screen = (2.0 * (uv - vec2(0.5, 0.5))) / resolution.yy * resolution;
+  // float d = dLine(uv_screen, time * 0.2);
 
+  float t = time * 2.0;
+  // vec2 center = vec2(sin(t*1239137.0), cos(t*1239137.0));
+  vec2 center = 0.5 * vec2(sin(t), cos(t));
+  float d = length(center - uv_screen);
 
-  // if (dCircles(uv_screen, time*0.1) <= 0.0) {
-  if (dPlanet(uv_screen, time*0.1, 0.35, 0.05) <= 0.0) {
-
-  // if (dSystem(uv_screen, time) <= 0.0) {
+  if (d <= 0.2) {
     frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
-  }
+  } else {
+      vec4 s_orig = texture(prev, uv);
+      vec4 s_x = texture(prev, uv + dx);
+      vec4 s_y = texture(prev, uv + dy);
+      vec4 s_mx = texture(prev, uv - dx);
+      vec4 s_my = texture(prev, uv - dy);
 
+      // float oval = (s_orig.x + s_orig.y + s_orig.z) / 3.0;
+      float xval = (s_x.x + s_x.y + s_x.z) / 3.0;
+      float yval = (s_y.x + s_y.y + s_y.z) / 3.0;
+      float mxval = (s_mx.x + s_mx.y + s_mx.z) / 3.0;
+      float myval = (s_my.x + s_my.y + s_my.z) / 3.0;
+
+      // float xdiff = oval - xval;
+      float xdiff = xval - mxval;
+      float ydiff = yval - myval;
+
+      vec2 delta = vec2(xdiff, ydiff);
+      float mag = length(delta);
+      vec2 v = normalize(delta);
+      // scale that shit for aspect
+      v.x *= dx.x;
+      v.y *= dy.y;
+      // v.y *= dy.y;
+      v.y += dy.y;
+
+      vec4 s1 = texture(prev, uv - v) * 0.99;
+      // v *= 2.0;
+      vec4 s2 = texture(prev, uv - v);
+
+      vec2 roll = hash2(uv_screen + time);
+      float nz = (roll.x) * 0.01;
+      s2 -= nz;
+
+      s1.w = 1.0;
+      s2.w = 1.0;
+
+      vec4 prev = texture(prev, uv);
+      // v -= dy;
+      // frag_colour = mix(mix(s1, s2, 1.0), prev, 0.5);
+      // frag_colour = s2;
+      frag_colour = roll.y < 1.0 ? s2 : prev;
+  }
 }
+
+// how to slow it down - probability to do this behaviour but otherwise do identity?

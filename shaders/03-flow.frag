@@ -251,7 +251,9 @@ void main() {
   if (dLine(uv, time*0.1) <= 0.004) {
     frag_colour = vec4(1.0, 1.0, 1.0, 1.0);
   } else {
-    frag_colour = texture(prev, uv-v*0.001)*0.99;
+    vec4 final_colour = texture(prev, uv-v*0.001)*0.99;
+    final_colour.w = 1.0;
+    frag_colour = final_colour;
   }
 
 }

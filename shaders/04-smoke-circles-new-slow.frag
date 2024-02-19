@@ -7,11 +7,14 @@ precision mediump float;
 uniform float time;
 uniform vec2 resolution;
 uniform sampler2D prev;
+uniform vec2 mouse;
+
 
 in vec2 uv;
 out vec4 frag_colour;
 
-
+float hash1( float n ) { return fract(sin(n)*43758.5453); }
+vec2  hash2( vec2  p ) { p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) ); return fract(sin(p)*43758.5453); }
 
 //	Classic Perlin 3D Noise 
 //	by Stefan Gustavson
@@ -218,7 +221,7 @@ void main() {
   vec2 uv_screen = (2.0 * (uv - vec2(0.5, 0.5))) / resolution.yy * resolution;
   // float d = dLine(uv_screen, time * 0.2);
 
-  float t = time * 2.0;
+  float t = time * 1.0;
   // vec2 center = vec2(sin(t*1239137.0), cos(t*1239137.0));
   vec2 center = 0.5 * vec2(sin(t), cos(t));
   float d = length(center - uv_screen);
@@ -248,12 +251,25 @@ void main() {
       // scale that shit for aspect
       v.x *= dx.x;
       v.y *= dy.y;
+      // v.y *= dy.y;
 
+      vec4 s1 = texture(prev, uv - v) * 0.99;
       v *= 2.0;
+      vec4 s2 = texture(prev, uv - v);
 
-      vec4 samp = texture(prev, uv - v) * 0.99;
+      vec2 roll = hash2(uv_screen + time);
+      float nz = (roll.x) * 0.00;
+      s2 -= nz;
 
+      s1.w = 1.0;
+      s2.w = 1.0;
+
+      vec4 prev = texture(prev, uv);
       // v -= dy;
-    frag_colour = samp;
+      // frag_colour = mix(mix(s1, s2, 1.0), prev, 0.5);
+      // frag_colour = s2;
+      frag_colour = roll.y < 0.5 ? s2 : prev;
   }
 }
+
+// how to slow it down - probability to do this behaviour but otherwise do identity?

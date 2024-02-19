@@ -3,7 +3,7 @@
 
 <head>
     <style>
-        h2 {
+        h3 {
             color: white;
             text-align: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -16,28 +16,64 @@
         }
 
         body {
-            background-color: black;
+            background-color: #222;
         }
-        .mainTable {
-            width: 100%;
-            height: 100%;
-            border: 1px solid red;
-            table-layout: fixed;
+        /* canvas {
+            width: 70%;
+            height: 70%;
+        } */
+        .gallery {
+            /* display: flex; */
+            /* flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto;
+            border: 1px solid #F00;
+            align-items: center;
+            justify-content: center; */
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+            max-width: 1200px;
+            margin: 0 auto;
+
         }
-        td {
-            border: 1px groove green;
+        .gallery-item {
+            /* justify-content: center;
+             */
+            /* width: 33.0%; */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* margin: 1px;
+            border: 1px solid #0F0; */
+            /* justify-content: center;
+            align-items: center; */
         }
+        /* .gallery-item canvas {
+            flex-grow: 1;
+        } */
+        /* .gallery-item h2 {
+            flex-basis: 100%;
+            text-align: center;
+        } */
         canvas {
-            width: 100%;
+            /* width: 100%;
+  height: 200px;
+  background-color: lightgray; */
+            width: 320px;
+            height: 180px; /* Set canvas height to 100% of its parent flex-item */
+            /* max-width: 100%; Ensure canvas doesn't exceed parent width */
+            /* border: 1px solid #FFF; Optional border style */
+            /* box-sizing: border-box; Include border in the total width */
         }
     </style>
 </head>
 
 <body>
     <h1>Shader Gallery</h1>
-    <table class="mainTable">
-        ###table###
-    </table>
+    <div class="gallery">
+    ###gallery###
+    </div>
 </body>
 
 </html>

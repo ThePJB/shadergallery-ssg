@@ -1,9 +1,9 @@
 const td_template: &str = r#"
-<td>
-    <h2>###name###</h2>
-    <a href="./###name###/index.html"><canvas id="canvas-###name###"></canvas></a>
+<div class="gallery-item">
+    <h3>###name###[<a href="./###name###/index.html">+</a>][<a href="./###name###/###name###.txt">src</a>]</h3>
+    <canvas id="canvas-###name###" width="320" height="180"></canvas>
     <script src="./###name###/main.js"></script>
-</td>
+</div>
 "#;
 
 fn main() {
@@ -41,22 +41,14 @@ fn main() {
         let index = individual_template.replace("###name###", just_name);
         std::fs::write(out_path.clone() + "index.html", index).unwrap();
         let mainjs = main_js_template.replace("###name###", just_name).replace("###fs###", &contents).replace("###vs###", vert_template);
-        std::fs::write(out_path + "main.js", mainjs).unwrap();
+        std::fs::write(out_path.clone() + "main.js", mainjs).unwrap();
+        std::fs::write(out_path + just_name + ".txt", contents).unwrap();
 
         // goes main.js and index.html
         tds.push(td_template.replace("###name###", just_name));
 
     }
 
-    let mut table = String::new();
-    for chunk in tds.chunks(3) {
-        table.push_str("<tr>");
-        for str in chunk {
-            table.push_str(str);
-        }
-        table.push_str("</tr>");
-    }
-
-    let index = gallery_template.replace("###table###", &table);
+    let index = gallery_template.replace("###gallery###", &tds.join("\n"));
     std::fs::write(out_dir.to_owned() + "index.html", index).unwrap();
 }
